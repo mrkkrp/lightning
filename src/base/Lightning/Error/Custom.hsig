@@ -1,0 +1,16 @@
+signature Lightning.Error.Custom
+  ( CustomError
+  , showCustomError )
+where
+
+import Data.Typeable (Typeable)
+
+data CustomError
+  deriving (Typeable)
+
+instance Eq CustomError
+instance Ord CustomError
+instance Show CustomError
+-- instance Typeable CustomError
+
+showCustomError :: CustomError -> String

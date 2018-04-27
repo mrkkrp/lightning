@@ -1,0 +1,67 @@
+signature Lightning.Stream
+  ( Stream
+  , Token
+  , Tokens
+  , tokenToChunk
+  , tokensToChunk
+  , chunkToTokens
+  , chunkLength
+  , chunkEmpty
+  , positionAt1
+  , positionAtN
+  , advance1
+  , advanceN
+  , take1_
+  , takeN_
+  , takeWhile_ )
+where
+
+import Lightning.Pos
+
+type Stream
+type Token
+type Tokens
+
+instance NFData Stream
+instance Eq Steam
+instance Org Steam
+instance NFData Token
+instance Eq Token
+instance Org Token
+instance Show Token
+instance Typeable Token
+instance NFData Tokens
+instance Eq Tokens
+instance Org Tokens
+
+tokenToChunk :: Token -> Tokens
+
+tokensToChunk :: [Token] -> Tokens
+
+chunkToTokens :: Tokens -> [Token]
+
+chunkLength :: Tokens -> Int
+
+chunkEmpty :: Tokens -> Bool
+
+positionAt1 :: SourcePos -> Token -> SourcePos
+
+positionAtN :: SourcePos -> Tokens -> SourcePos
+
+advance1 :: Pos -> SourcePos -> Token -> SourcePos
+
+advanceN :: Pos -> SourcePos -> Tokens -> SourcePos
+
+take1_ :: Stream -> Maybe (Token, Stream)
+
+takeN_ :: Int -> Stream -> Maybe (Tokens, Stream)
+
+takeWhile_ :: (Token -> Bool) -> Stream -> (Tokens, Stream)
+
+-- For displaying of parse errors
+
+showTokens :: NonEmpty Token -> String
+
+tokenAsChar :: Token -> Char
+
+tokenIsNewLine :: Token -> Bool

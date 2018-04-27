@@ -1,0 +1,11 @@
+signature Lightning.State.Custom
+  ( CustomState )
+where
+
+type CustomState
+
+instance Show CustomState
+instance Eq CustomState
+instance Data CustomState
+instance Typeable CustomState
+instance NFData CustomState
