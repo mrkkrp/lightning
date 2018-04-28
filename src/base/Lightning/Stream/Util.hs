@@ -1,7 +1,10 @@
-module Lightning.Error.Util
-  ( stringPretty
-  )
+module Lightning.Stream.Util
+  ( stringPretty )
 where
+
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Maybe (fromMaybe)
+import qualified Data.List.NonEmpty as NE
 
 -- | @stringPretty s@ returns pretty representation of string @s@. This is
 -- used when printing string tokens in error messages.

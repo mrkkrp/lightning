@@ -13,26 +13,34 @@ signature Lightning.Stream
   , advanceN
   , take1_
   , takeN_
-  , takeWhile_ )
+  , takeWhile_
+  , showTokens
+  , tokenAsChar
+  , tokenIsNewline )
 where
 
+import Control.DeepSeq (NFData)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Typeable (Typeable)
 import Lightning.Pos
 
-type Stream
-type Token
-type Tokens
-
+data Stream
+instance Eq Stream
+instance Ord Stream
+instance Show Stream
 instance NFData Stream
-instance Eq Steam
-instance Org Steam
-instance NFData Token
+
+data Token
+  deriving (Typeable)
 instance Eq Token
-instance Org Token
+instance Ord Token
 instance Show Token
-instance Typeable Token
-instance NFData Tokens
+instance NFData Token
+
+data Tokens
 instance Eq Tokens
-instance Org Tokens
+instance Ord Tokens
+instance NFData Tokens
 
 tokenToChunk :: Token -> Tokens
 
@@ -64,4 +72,4 @@ showTokens :: NonEmpty Token -> String
 
 tokenAsChar :: Token -> Char
 
-tokenIsNewLine :: Token -> Bool
+tokenIsNewline :: Token -> Bool

@@ -1,5 +1,6 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE LambdaCase   #-}
+{-# LANGUAGE BangPatterns  #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase    #-}
 
 module Lightning.Error
   ( -- * Parse error type
@@ -15,7 +16,6 @@ where
 import Control.DeepSeq
 import Control.Exception
 import Data.Char (chr)
-import Data.Data (Data)
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe, isNothing)
@@ -44,7 +44,7 @@ data ErrorItem
   = Tokens (NonEmpty Token)  -- ^ Non-empty stream of tokens
   | Label (NonEmpty Char)    -- ^ Label (cannot be empty)
   | EndOfInput               -- ^ End of input
-  deriving (Show, Read, Eq, Ord, Data, Typeable, Generic, Functor)
+  deriving (Show, Eq, Ord, Typeable, Generic)
 
 instance NFData ErrorItem
 
@@ -59,7 +59,7 @@ data ErrorFancy
     -- indentation level
   | ErrorCustom CustomError
     -- ^ Custom error data
-  deriving (Show, Read, Eq, Ord, Data, Typeable, Generic, Functor)
+  deriving (Show, Eq, Ord, Typeable, Generic)
 
 instance NFData ErrorFancy
 
@@ -83,7 +83,7 @@ data ParseError
     -- (if any), and expected tokens.
   | FancyError SourcePos (Set ErrorFancy)
     -- ^ Fancy, custom errors.
-  deriving (Show, Read, Eq, Data, Typeable, Generic)
+  deriving (Show, Eq, Typeable, Generic)
 
 instance NFData ParseError
 
@@ -97,7 +97,7 @@ instance Monoid ParseError where
   {-# INLINE mappend #-}
 
 instance Exception ParseError where
-  displayException = parseErrorPretty
+  displayException = parseErrorPretty defaultTabWidth
 
 -- | Get position of given 'ParseError'.
 
@@ -147,7 +147,7 @@ parseErrorPretty
   -> Stream            -- ^ Original input stream
   -> ParseError        -- ^ Parse error to render
   -> String            -- ^ Result of rendering
-parseErrorPretty e =
+parseErrorPretty w s e =
   sourcePosPretty (errorPos e) <> ":\n" <>
     padding <> "|\n" <>
     lineNumber <> " | " <> rline <> "\n" <>
@@ -160,19 +160,21 @@ parseErrorPretty e =
     rpadding   = replicate (unPos (sourceColumn epos) - 1) ' '
     rline      =
       case rline' of
-        [] -> "<empty line>"
+        "" -> "<empty line>"
         xs -> expandTab w xs
     rline'     = fmap tokenAsChar . chunkToTokens $
       selectLine (sourceLine epos) s
 
 parseErrorTextPretty
-  :: ParseError t e    -- ^ Parse error to render
+  :: ParseError        -- ^ Parse error to render
   -> String            -- ^ Result of rendering
 parseErrorTextPretty (TrivialError _ us ps) =
   if isNothing us && E.null ps
     then "unknown parse error\n"
-    else messageItemsPretty "unexpected " (maybe E.empty E.singleton us) <>
-         messageItemsPretty "expecting "  ps
+    else messageItemsPretty "unexpected "
+           (E.map showErrorItem $ maybe E.empty E.singleton us) <>
+         messageItemsPretty "expecting "
+           (E.map showErrorItem ps)
 parseErrorTextPretty (FancyError _ xs) =
   if E.null xs
     then "unknown fancy parse error\n"

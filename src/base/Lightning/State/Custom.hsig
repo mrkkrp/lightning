@@ -2,10 +2,12 @@ signature Lightning.State.Custom
   ( CustomState )
 where
 
-type CustomState
+import Control.DeepSeq (NFData)
+import Data.Typeable (Typeable)
+
+data CustomState
+  deriving (Typeable)
 
 instance Show CustomState
 instance Eq CustomState
-instance Data CustomState
-instance Typeable CustomState
 instance NFData CustomState

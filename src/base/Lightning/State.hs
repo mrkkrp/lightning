@@ -1,14 +1,16 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
 
 module Lightning.State
   ( State (..) )
 where
 
 import Control.DeepSeq (NFData)
-import Data.Data (Data)
 import Data.Typeable (Typeable)
-import Text.Lightning.Pos
-import Text.Lightning.State.Custom
+import GHC.Generics
+import Lightning.Pos
+import Lightning.State.Custom
+import Lightning.Stream
 
 -- | This is the Lightning state.
 
@@ -24,6 +26,6 @@ data State = State
     -- ^ Tab width to use
   , stateCustom :: CustomState
     -- ^
-  } deriving (Show, Eq, Data, Typeable)
+  } deriving (Show, Eq, Typeable, Generic)
 
 instance NFData State

@@ -41,7 +41,7 @@ library
   exposed-modules:    Lightning
                     -- , Lightning.Debug
                     , Lightning.Error
-                    , Lightning.Error.Util
+                    , Lightning.Stream.Util
                     -- , Lightning.Error.Builder
                     , Lightning.Internal
                     -- , Lightning.Lexer

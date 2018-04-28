@@ -11,6 +11,5 @@ data CustomError
 instance Eq CustomError
 instance Ord CustomError
 instance Show CustomError
--- instance Typeable CustomError
 
 showCustomError :: CustomError -> String
