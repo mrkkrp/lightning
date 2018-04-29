@@ -15,17 +15,17 @@ import Lightning.Stream
 -- | This is the Lightning state.
 
 data State = State
-  { stateInput :: Stream
+  { stInput :: Stream
     -- ^ The rest of input to process
-  , statePos :: SourcePos
+  , stPos :: SourcePos
     -- ^ Current position (column + line number) with support for include
     -- files
-  , stateTokensProcessed :: {-# UNPACK #-} !Int
+  , stTP :: {-# UNPACK #-} !Int
     -- ^ Number of processed tokens so far
-  , stateTabWidth :: Pos
+  , stTabWidth :: Pos
     -- ^ Tab width to use
-  , stateCustom :: CustomState
-    -- ^
+  , stCustom :: CustomState
+    -- ^ Custom state component
   } deriving (Show, Eq, Typeable, Generic)
 
 instance NFData State

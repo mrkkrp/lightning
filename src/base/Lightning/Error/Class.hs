@@ -1,10 +1,31 @@
-module Lightning.Stream.Util
-  ( stringPretty )
+module Lightning.Error.Class
+  ( ShowToken (..) )
 where
 
+import Data.Char (chr)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
+import Data.Word (Word8)
 import qualified Data.List.NonEmpty as NE
+
+class ShowToken a where
+
+  showTokens :: NonEmpty a -> String
+  tokenAsChar :: a -> Char
+  tokenIsNewline :: a -> Bool
+
+instance ShowToken Char where
+  showTokens = stringPretty
+  tokenAsChar = id
+  tokenIsNewline x = x == '\n'
+
+instance ShowToken Word8 where
+  showTokens = stringPretty . fmap (chr . fromIntegral)
+  tokenAsChar = chr . fromIntegral
+  tokenIsNewline x = x == 10
+
+----------------------------------------------------------------------------
+-- Helpers
 
 -- | @stringPretty s@ returns pretty representation of string @s@. This is
 -- used when printing string tokens in error messages.

@@ -13,15 +13,12 @@ signature Lightning.Stream
   , advanceN
   , take1_
   , takeN_
-  , takeWhile_
-  , showTokens
-  , tokenAsChar
-  , tokenIsNewline )
+  , takeWhile_ )
 where
 
 import Control.DeepSeq (NFData)
-import Data.List.NonEmpty (NonEmpty (..))
 import Data.Typeable (Typeable)
+import Lightning.Error.Class
 import Lightning.Pos
 
 data Stream
@@ -36,6 +33,7 @@ instance Eq Token
 instance Ord Token
 instance Show Token
 instance NFData Token
+instance ShowToken Token
 
 data Tokens
 instance Eq Tokens
@@ -65,11 +63,3 @@ take1_ :: Stream -> Maybe (Token, Stream)
 takeN_ :: Int -> Stream -> Maybe (Tokens, Stream)
 
 takeWhile_ :: (Token -> Bool) -> Stream -> (Tokens, Stream)
-
--- For displaying of parse errors
-
-showTokens :: NonEmpty Token -> String
-
-tokenAsChar :: Token -> Char
-
-tokenIsNewline :: Token -> Bool

@@ -10,25 +10,23 @@ module Lightning.Error
   , errorPos
     -- * Pretty-printing
   , parseErrorPretty
+  , parseErrorPretty'
+  , parseErrorPretty_
   , parseErrorTextPretty )
 where
 
 import Control.DeepSeq
 import Control.Exception
-import Data.Char (chr)
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (fromMaybe, isNothing)
-import Data.Proxy
+import Data.Maybe (isNothing)
 import Data.Semigroup
 import Data.Set (Set)
 import Data.Typeable (Typeable)
-import Data.Void
-import Data.Word (Word8)
 import GHC.Generics
+import Lightning.Error.Class
 import Lightning.Error.Custom
 import Lightning.Pos
-import Lightning.Stream
 import Lightning.Stream
 import Prelude hiding (concat)
 import qualified Data.List.NonEmpty as NE
@@ -97,7 +95,7 @@ instance Monoid ParseError where
   {-# INLINE mappend #-}
 
 instance Exception ParseError where
-  displayException = parseErrorPretty defaultTabWidth
+  displayException = parseErrorPretty
 
 -- | Get position of given 'ParseError'.
 
@@ -143,11 +141,23 @@ mergeError e1 e2 =
 -- Pretty-printing
 
 parseErrorPretty
+  :: ParseError        -- ^ Parse error to render
+  -> String            -- ^ Result of rendering
+parseErrorPretty e =
+  sourcePosPretty (errorPos e) <> ":\n" <> parseErrorTextPretty e
+
+parseErrorPretty'
+  :: Stream            -- ^ Original input stream
+  -> ParseError        -- ^ Parse error to render
+  -> String            -- ^ Result of rendering
+parseErrorPretty' = parseErrorPretty_ defaultTabWidth
+
+parseErrorPretty_
   :: Pos               -- ^ Tab width
   -> Stream            -- ^ Original input stream
   -> ParseError        -- ^ Parse error to render
   -> String            -- ^ Result of rendering
-parseErrorPretty w s e =
+parseErrorPretty_ w s e =
   sourcePosPretty (errorPos e) <> ":\n" <>
     padding <> "|\n" <>
     lineNumber <> " | " <> rline <> "\n" <>
