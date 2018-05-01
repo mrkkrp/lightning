@@ -1,5 +1,6 @@
 signature Lightning.State.Custom
-  ( CustomState )
+  ( CustomState
+  , initialCustomState )
 where
 
 import Control.DeepSeq (NFData)
@@ -7,6 +8,8 @@ import Data.Typeable (Typeable)
 
 data CustomState
   deriving (Typeable)
+
+initialCustomState :: CustomState
 
 instance Show CustomState
 instance Eq CustomState

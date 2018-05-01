@@ -40,8 +40,8 @@ library
                     -- , Lightning.Error.Builder
                     , Lightning.Internal
                     -- , Lightning.Lexer
-  other-modules:      Lightning.Pos
-                    , Lightning.State
+                    , Lightning.Pos
+  other-modules:      Lightning.State
   if flag(dev)
     ghc-options:      -Wall -Werror -Wcompat
                       -Wincomplete-record-updates
