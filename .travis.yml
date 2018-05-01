@@ -24,8 +24,8 @@ install:
 
 script:
   - cabal new-build --enable-tests --enable-benchmarks --flags=dev
-  - cabal new-test
-  - cabal new-haddock
+  # - cabal new-test
+  # - cabal new-haddock
   - cabal sdist
 
 notifications:
