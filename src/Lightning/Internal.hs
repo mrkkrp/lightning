@@ -107,8 +107,8 @@ instance Monoid a => Monoid (Parser a) where
   mconcat = fmap mconcat . sequence
   {-# INLINE mconcat #-}
 
--- instance (a ~ Tokens, IsString a, Eq a) => IsString (Parser a) where
---   fromString s = tokens (==) (fromString s)
+instance (a ~ Tokens, IsString a, Eq a) => IsString (Parser a) where
+  fromString s = tokens (==) (fromString s)
 
 instance Functor Parser where
   fmap = pMap
@@ -177,19 +177,30 @@ pPlus :: Parser a -> Parser a -> Parser a
 pPlus m n = Parser $ \s cok cerr eok eerr ->
   let meerr err ms =
         let ncerr err' s' = cerr (err' <> err) (longestMatch ms s')
-            neok x s' hs  = eok x s' (toHints (statePos s') err <> hs)
+            neok x s' hs  = eok x s' (toHints (stPos s') err <> hs)
             neerr err' s' = eerr (err' <> err) (longestMatch ms s')
         in unParser n s cok ncerr neok neerr
   in unParser m s cok cerr eok meerr
 {-# INLINE pPlus #-}
 
+-- | From two states, return the one with the greater number of processed
+-- tokens. If the numbers of processed tokens are equal, prefer the second
+-- state.
+
+longestMatch :: State -> State -> State
+longestMatch s1 s2 =
+  case stTP s1 `compare` stTP s2 of
+    LT -> s2
+    EQ -> s2
+    GT -> s1
+{-# INLINE longestMatch #-}
+
 instance MonadFix Parser where
-  mfix f = mkPT $ \s -> mfix $ \(~(Reply _ _ result)) -> do
-    let
-      a = case result of
-        OK a' -> a'
-        Error _ -> error "mfix Parser"
-    runParser (f a) s
+  mfix f = mkPT $ \s -> fix $ \(~(Reply _ _ result)) ->
+    let a = case result of
+              OK a' -> a'
+              Error _ -> error "mfix Parser"
+    in getReply (f a) s
 
 mkPT :: (State -> Reply a) -> Parser a
 mkPT k = Parser $ \s cok cerr eok eerr ->
@@ -236,6 +247,9 @@ label l p = Parser $ \s cok cerr eok eerr ->
   in unParser p s cok' cerr eok' eerr'
 {-# INLINE label #-}
 
+hidden :: Parser a -> Parser a
+hidden = label ""
+
 try :: Parser a -> Parser a
 try p = Parser $ \s cok _ eok eerr ->
   let eerr' err _ = eerr err s
@@ -250,7 +264,7 @@ lookAhead p = Parser $ \s _ cerr eok eerr ->
 
 notFollowedBy :: Parser a -> Parser ()
 notFollowedBy p = Parser $ \s@State {..} _ _ eok eerr ->
-  let what = maybe EndOfInput (Tokens . nes . fst) (take1_ input)
+  let what = maybe EndOfInput (Tokens . nes . fst) (take1_ stInput)
       unexpect u = TrivialError stPos (pure u) E.empty
       cok' _ _ _ = eerr (unexpect what) s
       cerr'  _ _ = eok () s mempty
@@ -267,13 +281,13 @@ withRecovery r p = Parser $ \s cok cerr eok eerr ->
   let mcerr err ms =
         let rcok x s' _ = cok x s' mempty
             rcerr   _ _ = cerr err ms
-            reok x s' _ = eok x s' (toHints (statePos s') err)
+            reok x s' _ = eok x s' (toHints (stPos s') err)
             reerr   _ _ = cerr err ms
         in unParser (r err) ms rcok rcerr reok reerr
       meerr err ms =
-        let rcok x s' _ = cok x s' (toHints (statePos s') err)
+        let rcok x s' _ = cok x s' (toHints (stPos s') err)
             rcerr   _ _ = eerr err ms
-            reok x s' _ = eok x s' (toHints (statePos s') err)
+            reok x s' _ = eok x s' (toHints (stPos s') err)
             reerr   _ _ = eerr err ms
         in unParser (r err) ms rcok rcerr reok reerr
   in unParser p s cok mcerr eok meerr
@@ -284,41 +298,47 @@ observing
   -> Parser (Either ParseError a)
 observing p = Parser $ \s cok _ eok _ ->
   let cerr' err s' = cok (Left err) s' mempty
-      eerr' err s' = eok (Left err) s' (toHints (statePos s') err)
+      eerr' err s' = eok (Left err) s' (toHints (stPos s') err)
   in unParser p s (cok . Right) cerr' (eok . Right) eerr'
 {-# INLINE observing #-}
 
 eof :: Parser ()
-eof = Parser $ \s@(State input pos tp w) _ _ eok eerr ->
-  case take1_ input of
+eof = Parser $ \s@State {..} _ _ eok eerr ->
+  case take1_ stInput of
     Nothing    -> eok () s mempty
     Just (x,_) ->
-      let !apos = positionAt1 pos x
+      let !apos = positionAt1 stPos x
           us    = (pure . Tokens . nes) x
           ps    = E.singleton EndOfInput
-      in eerr (TrivialError apos us ps)
-          (State input apos tp w)
+      in eerr (TrivialError apos us ps) State
+           { stPos = apos
+           , .. }
 {-# INLINE eof #-}
 
 token
   :: (Token -> Maybe a)
   -> Set ErrorItem
   -> Parser a
-token test ps = Parser $ \s@(State input pos tp w) cok _ _ eerr ->
-  case take1_ input of
+token test ps = Parser $ \s@State {..} cok _ _ eerr ->
+  case take1_ stInput of
     Nothing ->
       let us = pure EndOfInput
-      in eerr (TrivialError pos us ps) s
+      in eerr (TrivialError stPos us ps) s
     Just (c,cs) ->
       case test c of
         Nothing ->
-          let !apos = positionAt1 pos c
+          let !apos = positionAt1 stPos c
               us    = (Just . Tokens . nes) c
-          in eerr (TrivialError apos us ps)
-                  (State input apos tp w)
+          in eerr (TrivialError apos us ps) State
+               { stPos = apos
+               , .. }
         Just x ->
-          let !npos = advance1 w pos c
-              newstate = State cs npos (tp + 1) w
+          let !npos = advance1 stTabWidth stPos c
+              newstate = State
+                { stInput = cs
+                , stPos = npos
+                , stTP = stTP + 1
+                , .. }
           in cok x newstate mempty
 {-# INLINE token #-}
 
@@ -326,42 +346,57 @@ tokens
   :: (Tokens -> Tokens -> Bool)
   -> Tokens
   -> Parser Tokens
-tokens f tts = Parser $ \s@(State input pos tp w) cok _ eok eerr ->
+tokens f tts = Parser $ \s@State {..} cok _ eok eerr ->
   let unexpect pos' u =
         let us = pure u
-            ps = (E.singleton . Tokens . NE.fromList . chunkToTokens pxy) tts
+            ps = (E.singleton . Tokens . NE.fromList . chunkToTokens) tts
         in TrivialError pos' us ps
-      len = chunkLength pxy tts
-  in case takeN_ len input of
+      len = chunkLength tts
+  in case takeN_ len stInput of
     Nothing ->
-      eerr (unexpect pos EndOfInput) s
+      eerr (unexpect stPos EndOfInput) s
     Just (tts', input') ->
       if f tts tts'
-        then let !npos = advanceN pxy w pos tts'
-                 st    = State input' npos (tp + len) w
-             in if chunkEmpty pxy tts
+        then let !npos = advanceN stTabWidth stPos tts'
+                 st = State
+                   { stInput = input'
+                   , stPos = npos
+                   , stTP = stTP + len
+                   , .. }
+             in if chunkEmpty tts
                   then eok tts' st mempty
                   else cok tts' st mempty
-        else let !apos = positionAtN pxy pos tts'
-                 ps = (Tokens . NE.fromList . chunkToTokens pxy) tts'
-             in eerr (unexpect apos ps) (State input apos tp w)
+        else let !apos = positionAtN stPos tts'
+                 ps = (Tokens . NE.fromList . chunkToTokens) tts'
+             in eerr (unexpect apos ps) State
+                  { stInput = stInput
+                  , stPos = apos
+                  , .. }
 {-# INLINE tokens #-}
 
 takeWhileP
   :: Maybe String
   -> (Token -> Bool)
   -> Parser Tokens
-takeWhileP ml f = Parser $ \(State input pos tp w) cok _ eok _ ->
-  let (ts, input') = takeWhile_ f input
-      !npos = advanceN pxy w pos ts
-      len = chunkLength pxy ts
+takeWhileP ml f = Parser $ \State {..} cok _ eok _ ->
+  let (ts, input') = takeWhile_ f stInput
+      !npos = advanceN stTabWidth stPos ts
+      len = chunkLength ts
       hs =
         case ml >>= NE.nonEmpty of
           Nothing -> mempty
           Just l -> (Hints . pure . E.singleton . Label) l
-  in if chunkEmpty pxy ts
-       then eok ts (State input' npos (tp + len) w) hs
-       else cok ts (State input' npos (tp + len) w) hs
+  in if chunkEmpty ts
+       then eok ts State
+              { stInput = input'
+              , stPos = npos
+              , stTP = stTP + len
+              , .. } hs
+       else cok ts State
+              { stInput = input'
+              , stPos = npos
+              , stTP = stTP + len
+              , .. } hs
 {-# INLINE takeWhileP #-}
 
 takeWhile1P
@@ -491,11 +526,11 @@ refreshLastHint (Hints (_:xs)) (Just m) = Hints (E.singleton m : xs)
 
 -- | Low-level unpacking of the 'Parser' type.
 
-runParser
+getReply
   :: Parser a          -- ^ Parser to run
   -> State             -- ^ Initial state
   -> Reply a
-runParser p s = unParser p s cok cerr eok eerr
+getReply p s = unParser p s cok cerr eok eerr
   where
     cok a s' _  = Reply s' Consumed (OK a)
     cerr err s' = Reply s' Consumed (Error err)
