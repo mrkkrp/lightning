@@ -16,7 +16,7 @@ module Lightning.Byte
   -- , letterChar
   -- , alphaNumChar
   -- , printChar
-  -- , digitChar
+  , digitChar
   -- , octDigitChar
   -- , hexDigitChar
   -- , asciiChar
@@ -129,13 +129,14 @@ spaceChar = satisfy isSpace' <?> "white space"
 -- printChar = satisfy (isPrint . toChar) <?> "printable character"
 -- {-# INLINE printChar #-}
 
--- -- | Parse an ASCII digit, i.e between “0” and “9”.
+-- | Parse an ASCII digit, i.e between “0” and “9”.
 
--- digitChar :: (MonadParsec e s m, Token s ~ Word8) => m (Token s)
--- digitChar = satisfy isDigit' <?> "digit"
---   where
---     isDigit' x = x >= 48 && x <= 57
--- {-# INLINE digitChar #-}
+digitChar :: Token ~ Word8 => Parser Token
+digitChar = satisfy isDigit' <?> "digit"
+  where
+    isDigit' :: Word8 -> Bool
+    isDigit' x = x >= 48 && x <= 57
+{-# INLINE digitChar #-}
 
 -- -- | Parse an octal digit, i.e. between “0” and “7”.
 

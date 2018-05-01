@@ -1,8 +1,9 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards  #-}
 
 module Lightning
   ( -- * Re-exports
-    module Lightning.Pos
+    module Text.Pos
   , module Lightning.Error
   , module Control.Monad.Combinators
     -- * Data types
@@ -66,10 +67,10 @@ import Data.Maybe (fromJust)
 import Lightning.Error
 import Lightning.Error.Custom
 import Lightning.Internal
-import Lightning.Pos
 import Lightning.State
 import Lightning.State.Custom
 import Lightning.Stream
+import Text.Pos
 import qualified Data.Set as E
 
 ----------------------------------------------------------------------------
@@ -102,7 +103,7 @@ parseMaybe p s =
     Left  _ -> Nothing
     Right x -> Just x
 
-parseTest :: Show a
+parseTest :: (Show a, ShowToken Token)
   => Parser a          -- ^ Parser to run
   -> Stream            -- ^ Input for parser
   -> IO ()
@@ -111,7 +112,7 @@ parseTest p input =
     Left  e -> putStr (parseErrorPretty e)
     Right x -> print x
 
-parseTest' :: Show a
+parseTest' :: (Show a, ShowToken Token)
   => Parser a          -- ^ Parser to run
   -> Stream            -- ^ Input for parser
   -> IO ()

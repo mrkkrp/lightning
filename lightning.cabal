@@ -19,37 +19,80 @@ source-repository head
   type:               git
   location:           https://github.com/mrkkrp/lightning.git
 
-flag dev
-  description:        Turn on development settings.
-  manual:             True
-  default:            False
+-- flag dev
+--   description:        Turn on development settings.
+--   manual:             True
+--   default:            False
 
 library
   hs-source-dirs:     src
   build-depends:      base             >= 4.11 && < 5.0
+                    , bytestring       >= 0.2  && < 0.11
                     , containers       >= 0.5  && < 0.6
                     , deepseq          >= 1.3  && < 1.5
                     , parser-combinators >= 0.4 && < 2.0
+                    , case-insensitive >= 1.2 && < 1.3
                     , scientific       >= 0.3.1 && < 0.4
+                    , pos >= 0.1.0
   signatures:         Lightning.Error.Custom
                     , Lightning.State.Custom
                     , Lightning.Stream
   exposed-modules:    Lightning
                     -- , Lightning.Debug
                     , Lightning.Error
-                    , Lightning.Error.Class
+                    -- , Lightning.Error.Class
                     -- , Lightning.Error.Builder
                     , Lightning.Internal
-                    , Lightning.Byte.Lexer
-                    , Lightning.Byte
-                    , Lightning.Pos
+                    -- , Lightning.Byte.Lexer
+                    -- , Lightning.Byte
+                    , Lightning.Char
+                    , Lightning.Char.Lexer
+
+                    -- , Lightning.Stream.ByteString
+                    -- , Lightning.Error.Custom.Default
+                    -- , Lightning.State.Custom.Default
+
   other-modules:      Lightning.State
-  if flag(dev)
-    ghc-options:      -Wall -Werror -Wcompat
-                      -Wincomplete-record-updates
-                      -Wincomplete-uni-patterns
-                      -Wnoncanonical-monad-instances
-                      -Wnoncanonical-monadfail-instances
-  else
-    ghc-options:      -O2 -Wall
+  -- if flag(dev)
+  --   ghc-options:      -Wall -Werror -Wcompat
+  --                     -Wincomplete-record-updates
+  --                     -Wincomplete-uni-patterns
+  --                     -Wnoncanonical-monad-instances
+  --                     -Wnoncanonical-monadfail-instances
+  -- else
+  ghc-options:      -O2 -Wall
+  default-language:   Haskell2010
+
+library lightning-text
+  hs-source-dirs:    src-text
+  exposed-modules:   Lightning.Text.Error.Custom
+                   , Lightning.Text.Stream
+                   , Lightning.Text.State.Custom
+  build-depends:     base >= 4.11 && < 5.0
+                   , pos >= 0.1
+                   , text >= 0.2   && < 1.3
+  ghc-options:      -O2 -Wall
+  default-language: Haskell2010
+
+benchmark bench-speed
+  main-is:            Main.hs
+  hs-source-dirs:     bench/speed
+  type:               exitcode-stdio-1.0
+  build-depends:      base         >= 4.8  && < 5.0
+                    , criterion    >= 0.6.2.1 && < 1.5
+                    , deepseq      >= 1.3  && < 1.5
+                    , lightning
+                    , text         >= 0.2  && < 1.3
+                    , lightning-text
+  mixins:            lightning (Lightning as Lightning.Text, Lightning.Char as Lightning.Text.Common, Lightning.Char.Lexer as Lightning.Text.Lexer) requires (Lightning.Error.Custom as Lightning.Text.Error.Custom, Lightning.Stream as Lightning.Text.Stream, Lightning.State.Custom as Lightning.Text.State.Custom)
+
+  -- if !impl(ghc >= 8.0)
+  --   build-depends:    semigroups   == 0.18.*
+  -- if !impl(ghc >= 7.10)
+  --   build-depends:    void         == 0.7.*
+  -- if flag(dev)
+  --   ghc-options:      -O2 -Wall -Werror
+  -- else
+  --   ghc-options:      -O2 -Wall
+  ghc-options:      -O2 -Wall
   default-language:   Haskell2010

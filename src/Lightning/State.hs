@@ -8,14 +8,14 @@ where
 import Control.DeepSeq (NFData)
 import Data.Typeable (Typeable)
 import GHC.Generics
-import Lightning.Pos
 import Lightning.State.Custom
 import Lightning.Stream
+import Text.Pos
 
 -- | This is the Lightning state.
 
 data State = State
-  { stInput :: Stream
+  { stInput :: {-# UNPACK #-} !Stream
     -- ^ The rest of input to process
   , stPos :: SourcePos
     -- ^ Current position (column + line number) with support for include
@@ -24,7 +24,7 @@ data State = State
     -- ^ Number of processed tokens so far
   , stTabWidth :: Pos
     -- ^ Tab width to use
-  , stCustom :: CustomState
+  , stCustom :: {-# UNPACK #-} !CustomState
     -- ^ Custom state component
   } deriving (Show, Eq, Typeable, Generic)
 

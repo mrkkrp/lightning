@@ -5,7 +5,7 @@ let
   inherit (nixpkgs) pkgs;
 
   f = { mkDerivation, base, containers, deepseq, parser-combinators
-      , stdenv
+      , stdenv, bytestring, scientific
       }:
       mkDerivation {
         pname = "lightning";

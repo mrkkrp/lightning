@@ -56,9 +56,9 @@ import Data.Semigroup
 import Data.Set (Set)
 import Data.String (IsString (..))
 import Lightning.Error
-import Lightning.Pos
 import Lightning.State
 import Lightning.Stream
+import Text.Pos
 import qualified Control.Monad.Fail as Fail
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set           as E

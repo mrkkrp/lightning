@@ -1,6 +1,8 @@
-{-# LANGUAGE BangPatterns  #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase    #-}
+{-# LANGUAGE BangPatterns         #-}
+{-# LANGUAGE DeriveGeneric        #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE LambdaCase           #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Lightning.Error
   ( -- * Parse error type
@@ -8,6 +10,7 @@ module Lightning.Error
   , ErrorFancy (..)
   , ParseError (..)
   , errorPos
+  , ShowToken (..)
     -- * Pretty-printing
   , parseErrorPretty
   , parseErrorPretty'
@@ -17,18 +20,20 @@ where
 
 import Control.DeepSeq
 import Control.Exception
+import Data.Char (chr)
 import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Maybe (fromMaybe)
 import Data.Maybe (isNothing)
 import Data.Semigroup
 import Data.Set (Set)
 import Data.Typeable (Typeable)
+import Data.Word (Word8)
 import GHC.Generics
-import Lightning.Error.Class
 import Lightning.Error.Custom
-import Lightning.Pos
 import Lightning.Stream
 import Prelude hiding (concat)
+import Text.Pos
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set           as E
 
@@ -94,7 +99,7 @@ instance Monoid ParseError where
   mappend = (<>)
   {-# INLINE mappend #-}
 
-instance Exception ParseError where
+instance ShowToken Token => Exception ParseError where
   displayException = parseErrorPretty
 
 -- | Get position of given 'ParseError'.
@@ -137,23 +142,39 @@ mergeError e1 e2 =
     n (Just x) (Just y) = Just (max x y)
 {-# INLINE mergeError #-}
 
+class ShowToken a where
+
+  showTokens :: NonEmpty a -> String
+  tokenAsChar :: a -> Char
+  tokenIsNewline :: a -> Bool
+
+instance ShowToken Char where
+  showTokens = stringPretty
+  tokenAsChar = id
+  tokenIsNewline x = x == '\n'
+
+instance ShowToken Word8 where
+  showTokens = stringPretty . fmap (chr . fromIntegral)
+  tokenAsChar = chr . fromIntegral
+  tokenIsNewline x = x == 10
+
 ----------------------------------------------------------------------------
 -- Pretty-printing
 
-parseErrorPretty
-  :: ParseError        -- ^ Parse error to render
+parseErrorPretty :: ShowToken Token
+  => ParseError        -- ^ Parse error to render
   -> String            -- ^ Result of rendering
 parseErrorPretty e =
   sourcePosPretty (errorPos e) <> ":\n" <> parseErrorTextPretty e
 
-parseErrorPretty'
-  :: Stream            -- ^ Original input stream
+parseErrorPretty' :: ShowToken Token
+  => Stream            -- ^ Original input stream
   -> ParseError        -- ^ Parse error to render
   -> String            -- ^ Result of rendering
 parseErrorPretty' = parseErrorPretty_ defaultTabWidth
 
-parseErrorPretty_
-  :: Pos               -- ^ Tab width
+parseErrorPretty_ :: ShowToken Token
+  => Pos               -- ^ Tab width
   -> Stream            -- ^ Original input stream
   -> ParseError        -- ^ Parse error to render
   -> String            -- ^ Result of rendering
@@ -175,8 +196,8 @@ parseErrorPretty_ w s e =
     rline'     = fmap tokenAsChar . chunkToTokens $
       selectLine (sourceLine epos) s
 
-parseErrorTextPretty
-  :: ParseError        -- ^ Parse error to render
+parseErrorTextPretty :: ShowToken Token
+  => ParseError        -- ^ Parse error to render
   -> String            -- ^ Result of rendering
 parseErrorTextPretty (TrivialError _ us ps) =
   if isNothing us && E.null ps
@@ -193,7 +214,70 @@ parseErrorTextPretty (FancyError _ xs) =
 ----------------------------------------------------------------------------
 -- Helpers
 
-showErrorItem :: ErrorItem -> String
+-- | @stringPretty s@ returns pretty representation of string @s@. This is
+-- used when printing string tokens in error messages.
+
+stringPretty :: NonEmpty Char -> String
+stringPretty (x:|[])      = charPretty x
+stringPretty ('\r':|"\n") = "crlf newline"
+stringPretty xs           = "\"" <> concatMap f (NE.toList xs) <> "\""
+  where
+    f ch =
+      case charPretty' ch of
+        Nothing     -> [ch]
+        Just pretty -> "<" <> pretty <> ">"
+
+-- | @charPretty ch@ returns user-friendly string representation of given
+-- character @ch@, suitable for using in error messages.
+
+charPretty :: Char -> String
+charPretty ' ' = "space"
+charPretty ch = fromMaybe ("'" <> [ch] <> "'") (charPretty' ch)
+
+-- | If the given character has a pretty representation, return that,
+-- otherwise 'Nothing'. This is an internal helper.
+
+charPretty' :: Char -> Maybe String
+charPretty' '\NUL' = pure "null"
+charPretty' '\SOH' = pure "start of heading"
+charPretty' '\STX' = pure "start of text"
+charPretty' '\ETX' = pure "end of text"
+charPretty' '\EOT' = pure "end of transmission"
+charPretty' '\ENQ' = pure "enquiry"
+charPretty' '\ACK' = pure "acknowledge"
+charPretty' '\BEL' = pure "bell"
+charPretty' '\BS'  = pure "backspace"
+charPretty' '\t'   = pure "tab"
+charPretty' '\n'   = pure "newline"
+charPretty' '\v'   = pure "vertical tab"
+charPretty' '\f'   = pure "form feed"
+charPretty' '\r'   = pure "carriage return"
+charPretty' '\SO'  = pure "shift out"
+charPretty' '\SI'  = pure "shift in"
+charPretty' '\DLE' = pure "data link escape"
+charPretty' '\DC1' = pure "device control one"
+charPretty' '\DC2' = pure "device control two"
+charPretty' '\DC3' = pure "device control three"
+charPretty' '\DC4' = pure "device control four"
+charPretty' '\NAK' = pure "negative acknowledge"
+charPretty' '\SYN' = pure "synchronous idle"
+charPretty' '\ETB' = pure "end of transmission block"
+charPretty' '\CAN' = pure "cancel"
+charPretty' '\EM'  = pure "end of medium"
+charPretty' '\SUB' = pure "substitute"
+charPretty' '\ESC' = pure "escape"
+charPretty' '\FS'  = pure "file separator"
+charPretty' '\GS'  = pure "group separator"
+charPretty' '\RS'  = pure "record separator"
+charPretty' '\US'  = pure "unit separator"
+charPretty' '\DEL' = pure "delete"
+charPretty' '\160' = pure "non-breaking space"
+charPretty' _      = Nothing
+
+----------------------------------------------------------------------------
+-- Helpers
+
+showErrorItem :: ShowToken Token => ErrorItem -> String
 showErrorItem = \case
   Tokens ts -> showTokens ts
   Label label -> NE.toList label
@@ -234,8 +318,8 @@ orList xs       = intercalate ", " (NE.init xs) <> ", or " <> NE.last xs
 
 -- | Select a line from input stream given its number.
 
-selectLine
-  :: Pos               -- ^ Number of line to select
+selectLine :: ShowToken Token
+  => Pos               -- ^ Number of line to select
   -> Stream            -- ^ Input stream
   -> Tokens            -- ^ Selected line
 selectLine l = go pos1

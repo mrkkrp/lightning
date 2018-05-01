@@ -18,8 +18,8 @@ where
 
 import Control.DeepSeq (NFData)
 import Data.Typeable (Typeable)
-import Lightning.Error.Class
-import Lightning.Pos
+-- import Lightning.Error.Class
+import Text.Pos
 
 data Stream
 instance Eq Stream
@@ -33,7 +33,7 @@ instance Eq Token
 instance Ord Token
 instance Show Token
 instance NFData Token
-instance ShowToken Token
+-- instance ShowToken Token
 
 data Tokens
 instance Eq Tokens
