@@ -8,6 +8,9 @@
 
 This is an experiment. A rewrite of Megaparsec using backpack.
 
+Update: the development has been suspended because the approach failed to
+demonstrate convincing performance improvements.
+
 ## License
 
 Copyright © 2018 Mark Karpov
